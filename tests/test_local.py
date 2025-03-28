@@ -239,7 +239,7 @@ async def test_required():
 
 
 @pytest.mark.asyncio
-async def _test_doubles():
+async def test_doubles():
     """Check images doubles with similar names"""
     print_func_commentary()
     case = {"name": "File Upload", "image": ("image.png", open(path_join("image.png"), "rb"), "image/png")}

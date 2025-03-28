@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+import copy
+import types
 from typing import Type, Optional, Self, Set, Any
 
 from slugify import slugify
@@ -177,47 +180,57 @@ class ImageField(CharField):
             """
             await field.get_storage()(file_name, field.get_model_dir()).delete_image()
 
-        def set_kwargs(instance: Type[Model], kwargs: dict):
-            """
-            Handles updating existing image references in the model.
-            - This method is called during model initialization or when using `update_from_dict`.
-            - It also checks for updated images and adds them to the deletion list if the save operation is successful.
-            """
-            for fn in get_image_fields(instance):
-                field = get_field_from_model(fn)
-                file_name = getattr(instance, fn, None)
-                if file_name and kwargs.get(fn) != file_name:
-                    get_images_for_deleted(instance).add((field, file_name))
-            return super(instance.__class__, instance)._set_kwargs(kwargs)
+        def kwargs_wrapper(original_method):
 
-        async def save(instance: Type[Model], *args, **kwargs):
-            """
-            Saves the instance and handles old image cleanup.
+            def set_kwargs(instance: Type[Model], kwargs: dict):
+                """
+                Handles updating existing image references in the model.
+                - This method is called during model initialization or when using `update_from_dict`.
+                - It also checks for updated images and adds them to the deletion list if the save operation is successful.
+                """
+                for fn in get_image_fields(instance):
+                    field = get_field_from_model(fn)
+                    file_name = getattr(instance, fn, None)
+                    if file_name and kwargs.get(fn) != file_name:
+                        get_images_for_deleted(instance).add((field, file_name))
+                return original_method(instance, kwargs)
 
-            - After a successful save, it removes images that have been updated.
-            - In case of an error while saving the model, it deletes the newly created images before saving.
-            """
-            await precreate_images(instance)
-            try:
-                result = await super(instance.__class__, instance).save(*args, **kwargs)
-                for field, file_name in get_images_for_deleted(instance):
-                    if getattr(instance, field.model_field_name) != file_name:
+            return set_kwargs
+
+        def save_wrapper(original_method):
+            async def save(instance: Type[Model], *args, **kwargs):
+                """
+                Saves the instance and handles old image cleanup.
+
+                - After a successful save, it removes images that have been updated.
+                - In case of an error while saving the model, it deletes the newly created images before saving.
+                """
+                await precreate_images(instance)
+                try:
+                    result = await original_method(instance, *args, **kwargs)
+                    for field, file_name in get_images_for_deleted(instance):
+                        if getattr(instance, field.model_field_name) != file_name:
+                            await clean_files(file_name, field)
+                    return result
+                except BaseORMException as e:
+                    for field, file_name in get_precreated_images(instance):
+                        await clean_files(file_name, field)
+                    raise e
+
+            return save
+
+        def delete_wrapper(original_method):
+            async def delete(instance: Type[Model], *args, **kwargs):
+                """Deletes the instance and ensures images are removed."""
+                result = await original_method(instance, *args, **kwargs)
+                for fn in get_image_fields(instance):
+                    file_name = getattr(instance, fn)
+                    if file_name:
+                        field = get_field_from_model(fn)
                         await clean_files(file_name, field)
                 return result
-            except BaseORMException as e:
-                for field, file_name in get_precreated_images(instance):
-                    await clean_files(file_name, field)
-                raise e
 
-        async def delete(instance: Type[Model], *args, **kwargs):
-            """Deletes the instance and ensures images are removed."""
-            result = await super(instance.__class__, instance).delete(*args, **kwargs)
-            for fn in get_image_fields(instance):
-                file_name = getattr(instance, fn)
-                if file_name:
-                    field = get_field_from_model(fn)
-                    await clean_files(file_name, field)
-            return result
+            return delete
 
         # Dynamically add methods to the model
         setattr(self.model, f"get_{field_name}_webp", get_webp_image)
@@ -226,9 +239,9 @@ class ImageField(CharField):
 
         # Override save/delete methods only if there are image fields
         if len(get_image_fields(self.model)) <= 1:
-            setattr(self.model, f"save", save)
-            setattr(self.model, f"delete", delete)
-            setattr(self.model, f"_set_kwargs", set_kwargs)
+            setattr(self.model, f"save", save_wrapper(copy_method(self.model, "save")))
+            setattr(self.model, f"delete", delete_wrapper(copy_method(self.model, "delete")))
+            setattr(self.model, f"_set_kwargs", kwargs_wrapper(copy_method(self.model, "_set_kwargs")))
         return super().get_for_dialect(*args, **kwargs)
 
 
@@ -253,3 +266,30 @@ def _get_or_create_attr(model: Type[Model], attr_name: str) -> Set[str] or Set[I
     if not hasattr(model, attr_name):
         setattr(model, attr_name, set())
     return getattr(model, attr_name)
+
+
+def copy_method(cls, method_name):
+    """
+    Creates a copy of a class method by its name.
+
+    :param cls: The class containing the method
+    :param method_name: The name of the method to copy
+    :return: A new method (copied)
+    """
+    if not hasattr(cls, method_name):
+        raise AttributeError(f"Method '{method_name}' not found in class {cls.__name__}")
+
+    method = getattr(cls, method_name)
+    if not callable(method):
+        raise TypeError(f"'{method_name}' is not a callable method in class {cls.__name__}")
+
+    # Create a new function based on the method
+    new_method = types.FunctionType(
+        method.__code__,  # Original method code
+        method.__globals__,  # Use original global variables
+        name=method.__name__,  # Retain original method name
+        argdefs=method.__defaults__,  # Set default arguments
+        closure=method.__closure__  # Pass closures if any
+    )
+
+    return new_method
