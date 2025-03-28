@@ -1,0 +1,4 @@
+fastapi
+fastadmin
+uvicorn
+dotenv

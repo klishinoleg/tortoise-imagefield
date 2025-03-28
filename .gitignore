@@ -1,0 +1,57 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C Extensions
+*.so
+
+# Distribution / Packaging
+.Python
+env/
+venv/
+ENV/
+.build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Virtual environment
+.venv/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Pytest cache
+.pytest_cache/
+
+# Tortoise ORM migrations
+aerich.ini
+migrations/
+
+# Babel translations
+locales/*.mo
+locales/*.pot
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# VS Code
+*.code-workspace
+
+# FastAPI Admin auto-generated files
+fastapi-admin/
+
+*.sqlite3
+examples/.env
+/.env
+/examples/uploads/
+/tests/uploads/

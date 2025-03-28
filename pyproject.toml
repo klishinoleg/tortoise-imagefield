@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tortoise-imagefield"
+version = "0.1.0"
+description = "Custom Tortoise ORM field for handling image uploads, supporting local and S3 storage"
+authors = [
+    { name = "Oleg Klishin", email = "klishinoleg@gmail.com" }
+]
+license = { text = "MIT" }
+dependencies = [
+    "tortoise-orm==0.24.2",
+    "boto3",
+    "pillow",
+    "python-dotenv",
+    "starlette",
+    "asgiref",
+    "python-slugify",
+    "aiohttp",
+    "aiofiles",
+    "aioboto3"
+]
+readme = "README.md"
+requires-python = ">=3.8"
+
+[tool.setuptools.dynamic]
+classifiers = { file = ["classifiers.txt"] }
