@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tortoise-imagefield"
 version = "0.1.0"
-description = "Custom Tortoise ORM field for handling image uploads, supporting local and S3 storage"
+description = "Asynchronous Tortoise ORM field for handling image uploads with cropping, caching, and support for AWS S3 or local storage."
 authors = [
     { name = "Oleg Klishin", email = "klishinoleg@gmail.com" }
 ]
