@@ -20,7 +20,7 @@ class LocalStorage(StorageInterface):
     deleting them, handling cached versions, and checking their existence.
     """
 
-    def get_image_path(self) -> str:
+    def get_image_path(self) -> Optional[str]:
         """Returns the full filesystem path to the original image."""
         return self._get_file_path()
 
@@ -128,8 +128,10 @@ class LocalStorage(StorageInterface):
         """Returns the directory path where the original image is stored."""
         return os.path.join(cfg.image_dir, self._field_dir)
 
-    def _get_file_path(self) -> str:
+    def _get_file_path(self) -> Optional[str]:
         """Constructs the absolute file path for the original image."""
+        if not self._filename:
+            return None
         return os.path.join(self._get_field_dir_path(), self._filename)
 
     def _get_cache_dir(self) -> str:

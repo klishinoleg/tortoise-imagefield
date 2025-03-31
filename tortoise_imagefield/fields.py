@@ -157,10 +157,10 @@ class ImageField(CharField):
             """
             for image_field_name in get_image_fields(self.model):
                 field = get_field_from_model(image_field_name)
-                value = getattr(instance, image_field_name)
-                if not value:
+                if instance.pk and not next((f for f, iv in get_images_for_deleted(instance) if f == field), None):
                     continue
-                if isinstance(value, str) and self._file_prefix in value:
+                value = getattr(instance, image_field_name)
+                if not LoaderAdapter.is_value_source(value):
                     continue
                 image, filename = await LoaderAdapter.load(value)
                 field_for_name = field.get_field_for_name()
@@ -180,22 +180,25 @@ class ImageField(CharField):
             """
             await field.get_storage()(file_name, field.get_model_dir()).delete_image()
 
-        def kwargs_wrapper(original_method):
+        def setattr_wrapper(original_method):
 
-            def set_kwargs(instance: Type[Model], kwargs: dict):
+            def set_attr(instance: Type[Model], key: str, value: Any):
                 """
                 Handles updating existing image references in the model.
                 - This method is called during model initialization or when using `update_from_dict`.
                 - It also checks for updated images and adds them to the deletion list if the save operation is successful.
                 """
-                for fn in get_image_fields(instance):
-                    field = get_field_from_model(fn)
-                    file_name = getattr(instance, fn, None)
-                    if file_name and kwargs.get(fn) != file_name:
+                if key in get_image_fields(instance):
+                    field = get_field_from_model(key)
+                    file_name = getattr(instance, key, None)
+                    if isinstance(value, str) and (file_name is None or str(file_name) not in value):
+                        if file_name is not None and not LoaderAdapter.is_value_source(file_name):
+                            LoaderAdapter.is_value_source(value, raise_error=True)
+                    if file_name != value and (LoaderAdapter.is_value_source(value) or value is None):
                         get_images_for_deleted(instance).add((field, file_name))
-                return original_method(instance, kwargs)
+                return original_method(instance, key, value)
 
-            return set_kwargs
+            return set_attr
 
         def save_wrapper(original_method):
             async def save(instance: Type[Model], *args, **kwargs):
@@ -209,12 +212,14 @@ class ImageField(CharField):
                 try:
                     result = await original_method(instance, *args, **kwargs)
                     for field, file_name in get_images_for_deleted(instance):
-                        if getattr(instance, field.model_field_name) != file_name:
+                        if file_name and getattr(instance, field.model_field_name) != file_name:
                             await clean_files(file_name, field)
+                    get_images_for_deleted(instance).clear()
                     return result
                 except BaseORMException as e:
                     for field, file_name in get_precreated_images(instance):
                         await clean_files(file_name, field)
+                    get_precreated_images(instance).clear()
                     raise e
 
             return save
@@ -241,7 +246,7 @@ class ImageField(CharField):
         if len(get_image_fields(self.model)) <= 1:
             setattr(self.model, f"save", save_wrapper(copy_method(self.model, "save")))
             setattr(self.model, f"delete", delete_wrapper(copy_method(self.model, "delete")))
-            setattr(self.model, f"_set_kwargs", kwargs_wrapper(copy_method(self.model, "_set_kwargs")))
+            setattr(self.model, f"__setattr__", setattr_wrapper(copy_method(self.model, "__setattr__")))
         return super().get_for_dialect(*args, **kwargs)
 
 

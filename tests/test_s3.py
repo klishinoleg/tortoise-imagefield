@@ -1,14 +1,13 @@
+import asyncio
 import base64
 import os
-import shutil
 import pytest
 import requests
-from PIL import Image
 from fastapi import FastAPI, File, Form, Request, UploadFile, HTTPException
 from fastapi.testclient import TestClient
 from slugify import slugify
 from tortoise import Tortoise
-from tortoise.exceptions import IntegrityError
+from tortoise.exceptions import IntegrityError, ValidationError
 from tests.helpers import print_func_commentary, path_join, check_image_url
 from tests.models import ItemS3Model
 from tests.s3_helper import S3Helper
@@ -237,7 +236,7 @@ async def test_required():
 
 @pytest.mark.asyncio
 async def test_doubles():
-    """Check images doubles with similar names"""
+    """Check S3 images doubles with similar names"""
     print_func_commentary()
     case = {"name": "File Upload", "image": ("image.png", open(path_join("image.png"), "rb"), "image/png")}
     response_1 = client.post("/upload/", files={"image": case["image"]}, data={"name": case["name"]})
@@ -250,3 +249,27 @@ async def test_doubles():
     print(data_1.get("image_url"))
     print(data_2.get("image_url"))
     print(f"✓ Images are difference")
+
+
+@pytest.mark.asyncio
+async def test_partial_update():
+    """Check correct S3 partial update"""
+    print_func_commentary()
+    item = await ItemS3Model.filter(s3_avatar__isnull=False).all().first()
+    assert item is not None
+    print(f"✓ Loaded item with avatar.")
+    item.update_from_dict({"name": "Partial Update"})
+    await item.save()
+    print(f"✓ Saved Item without images changes.")
+    avatar_path = item.get_s3_avatar_path()
+    item.update_from_dict({"s3_avatar": None})
+    await item.save()
+    print(f"✓ Saved Item without avatar.")
+    assert item.get_s3_avatar_path() is None
+    assert not s3_helper.check_exists(avatar_path), f"✗ {avatar_path} already exists"
+    print(f"✓ avatar url not found: {avatar_path}! OK.")
+    item.s3_avatar = "https://picsum.photos/200"
+    await item.save()
+    avatar_path = item.get_s3_avatar_path()
+    assert s3_helper.check_exists(avatar_path), f"✗ {avatar_path} is not exists"
+    print(f"✓ avatar created and found: {avatar_path}! OK.")

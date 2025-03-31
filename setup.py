@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="tortoise-imagefield",
-    version="0.1.1",
+    version="0.1.2",
     author="Klishin Oleg",
     author_email="klishinoleg@gmail.com",
     description="Asynchronous Tortoise ORM field for handling image uploads with cropping, caching, and support for AWS S3 or local storage.",

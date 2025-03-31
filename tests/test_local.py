@@ -7,7 +7,7 @@ from fastapi import FastAPI, File, Form, Request, UploadFile, HTTPException
 from fastapi.testclient import TestClient
 from slugify import slugify
 from tortoise import Tortoise
-from tortoise.exceptions import IntegrityError
+from tortoise.exceptions import IntegrityError, ValidationError
 from tests.helpers import path_join, check_file, print_func_commentary, check_image_url
 from tests.models import ItemModel
 from fastapi.staticfiles import StaticFiles
@@ -253,3 +253,30 @@ async def test_doubles():
     print(data_1.get("image_url"))
     print(data_2.get("image_url"))
     print(f"✓ Images are difference")
+
+
+@pytest.mark.asyncio
+async def test_partial_update():
+    """Check correct partial update"""
+    print_func_commentary()
+    item = await ItemModel.filter(avatar__isnull=False).all().first()
+    assert item is not None
+    print(f"✓ Loaded item with avatar.")
+    item.update_from_dict({"name": "Partial Update"})
+    await item.save()
+    print(f"✓ Saved Item without images changes.")
+    avatar_path = item.get_avatar_path()
+    item.update_from_dict({"avatar": None})
+    await item.save()
+    print(f"✓ Saved Item without avatar.")
+    assert item.get_avatar_path() is None
+    assert not os.path.exists(avatar_path), f"✗ {avatar_path} already exists"
+    print(f"✓ avatar url not found: {avatar_path}! OK.")
+    item.avatar = "https://picsum.photos/200"
+    await item.save()
+    avatar_path = item.get_avatar_path()
+    assert os.path.exists(avatar_path), f"✗ {avatar_path} is exists"
+    print(f"✓ avatar created and found: {avatar_path}! OK.")
+    with pytest.raises(ValidationError):
+        item.avatar = "abracadabra"
+        await item.save()

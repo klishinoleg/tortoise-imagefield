@@ -96,7 +96,7 @@ class StorageInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_image_path(self) -> str:
+    def get_image_path(self) -> Optional[str]:
         """Returns the file system path to the stored image."""
         raise NotImplementedError
 
