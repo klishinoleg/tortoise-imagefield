@@ -150,7 +150,7 @@ class LocalStorage(StorageInterface):
         - `file_path` (str): The target file path.
         """
         buffer = BytesIO()
-        img.save(buffer, format=img.format)
+        img.save(buffer, format=img.format, lossles=True, quality=100)
         buffer.seek(0)
 
         async with aiofiles.open(file_path, "wb") as f:

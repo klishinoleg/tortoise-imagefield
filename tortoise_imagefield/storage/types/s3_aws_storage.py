@@ -174,7 +174,7 @@ class S3AWSStorage(StorageInterface):
         # Ensure image format is set (default to PNG)
         image_format = image.format if image.format else "PNG"
 
-        image.save(buffer, format=image_format)
+        image.save(buffer, format=image_format, lossles=True, quality=100)
         buffer.seek(0)
 
         async with self.get_client() as s3:

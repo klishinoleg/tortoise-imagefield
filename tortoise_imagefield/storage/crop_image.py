@@ -44,7 +44,7 @@ def _process_image(img: Image, width: int, height: int, position: str):
     - `Image`: The cropped and resized image in WebP format.
     """
 
-    img = img.convert("RGB")  # Convert to RGB mode for better compatibility
+    img = img.convert("RGBA")  # Convert to RGB mode for better compatibility
     box = _calculate_box(img, width, height, position)  # Determine the cropping area
     new_img = img.resize((width, height), Image.Resampling.LANCZOS, box=box)  # Resize and crop
     new_img.format = "WEBP"
