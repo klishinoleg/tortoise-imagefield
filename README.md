@@ -154,15 +154,25 @@ async def create_item(request: Request):
 You can configure storage settings using an `.env` file:
 
 ```ini
-DATABASE_URL = sqlite://db.sqlite3
-IMAGES_UPLOAD_DIR = uploads
-IMAGES_UPLOAD_URL = uploads
-S3_BUCKET =
-S3_REGION =
-S3_ACCESS_KEY =
-S3_SECRET_KEY =
-S3_CDN_DOMAIN =
+DATABASE_URL= sqlite://db.sqlite3
+IMAGES_UPLOAD_DIR=uploads
+IMAGES_UPLOAD_URL=uploads
+S3_BUCKET=
+S3_REGION=
+S3_ACCESS_KEY=
+S3_SECRET_KEY=
+S3_CDN_DOMAIN=
+S3_ACL_TYPE=private #default
+
+
+# or change to "public-read"
+from tortoise_imagefield.config import Config, S3AclType
+
+cfg = Config()
+cfg.s3_acl_type = S3AclType.PUBLIC_READ.value
 ```
+
+
 
 The package **uses public access for S3**, as it is intended to be a simple storage **solution for public images**.
 

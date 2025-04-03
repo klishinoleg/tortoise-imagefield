@@ -11,9 +11,10 @@ from tortoise.exceptions import IntegrityError, ValidationError
 from tests.helpers import print_func_commentary, path_join, check_image_url
 from tests.models import ItemS3Model
 from tests.s3_helper import S3Helper
-from tortoise_imagefield.config import Config
+from tortoise_imagefield.config import Config, S3AclType
 
 cfg = Config()
+cfg.s3_acl_type = S3AclType.PUBLIC_READ.value
 s3_helper = S3Helper()
 
 app = FastAPI()
@@ -96,7 +97,6 @@ async def test_image_upload_and_cache():
         print(f"✓ {case['name']} - Upload successful")
 
         item_data = response.json()
-
         # Fetch the uploaded item
         item = await ItemS3Model.get_or_none(id=item_data["id"])
         assert item is not None, f"✗ {case['name']} - ItemModel not found in database"
@@ -107,13 +107,14 @@ async def test_image_upload_and_cache():
 
         # Get WebP cached image
         webp_url = await item.get_s3_image_webp(100, 100)
+        print(item.s3_image)
+        print(webp_url)
         assert webp_url is not None, f"✗ {case['name']} - WebP image URL is None"
         print(f"✓ {case['name']} - WebP image URL generated")
 
         webp_path = await item.get_s3_image_webp(100, 100, return_path=True)
         assert webp_path is not None, f"✗ {case['name']} - WebP image path is None"
         print(f"✓ {case['name']} - WebP image path found")
-
         check_image_url(requests, webp_url, case["name"] + " Webp")
         file_path = item.get_s3_image_path()
 

@@ -85,18 +85,21 @@ class S3AWSStorage(StorageInterface):
 
     async def _load_image(self):
         """
-        Asynchronously loads the original image from S3 or CloudFront.
+        Asynchronously loads the original image from S3 using aioboto3.
 
-        - Uses `aiohttp` for non-blocking HTTP requests.
-        - If the request is successful (status 200), the image is stored in memory.
+        - Fetches the image binary using S3 GetObject.
+        - Loads it into a PIL Image from memory.
         """
-        image_url = self._get_s3_or_cdn_url(self._get_image_key())
+        image_key = self._get_image_key()
+        print("Loading image from S3 key:", image_key)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(image_url) as response:
-                if response.status == 200:
-                    image_data = await response.read()
-                    self._img = Image.open(BytesIO(image_data))
+        try:
+            async with self.get_client() as s3:
+                response = await s3.get_object(Bucket=cfg.s3_bucket, Key=image_key)
+                image_data = await response["Body"].read()
+                self._img = Image.open(BytesIO(image_data))
+        except Exception as e:
+            print(f"❌ Unexpected error loading image: {e}")
 
     async def _save_cached_image(self):
         """
@@ -176,13 +179,12 @@ class S3AWSStorage(StorageInterface):
 
         image.save(buffer, format=image_format, lossles=True, quality=100)
         buffer.seek(0)
-
         async with self.get_client() as s3:
             await s3.upload_fileobj(
                 buffer,
                 Bucket=cfg.s3_bucket,
                 Key=image_key,
-                ExtraArgs={"ACL": "public-read"},
+                ExtraArgs={"ACL": cfg.s3_acl_type},
             )
 
     async def _delete_from_s3(self, image_key: str):
