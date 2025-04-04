@@ -45,8 +45,6 @@ class S3Cache:
         """
         packed = await self._pack(path)
         tree = await self._get_tree()
-        print(tree)
-        print(self._path_map)
         parts = packed.split("/")
         node = tree
         for part in parts:

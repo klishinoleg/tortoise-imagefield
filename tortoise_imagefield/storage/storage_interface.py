@@ -170,11 +170,11 @@ class StorageInterface(ABC):
         """
         if not self._filename:
             return self
-        await self._load_image()
-        if not self._img:
-            return self
         self._croped_filename = f"{width}x{height or width}-{position}.webp"
         if not await self._check_cached_image():
+            await self._load_image()
+            if not self._img:
+                return self
             self._croped_img = crop_image(self._img, width, height or width, position)
             await self._save_cached_image()
         return self
