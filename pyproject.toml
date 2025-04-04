@@ -19,7 +19,8 @@ dependencies = [
     "python-slugify",
     "aiohttp",
     "aiofiles",
-    "aioboto3"
+    "aioboto3",
+    "aiocache"
 ]
 readme = "README.md"
 requires-python = ">=3.8"

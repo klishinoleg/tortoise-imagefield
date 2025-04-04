@@ -18,7 +18,8 @@ setup(
         "python-slugify",
         "aiohttp",
         "aiofiles",
-        "aioboto3"
+        "aioboto3",
+        "aiocache"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

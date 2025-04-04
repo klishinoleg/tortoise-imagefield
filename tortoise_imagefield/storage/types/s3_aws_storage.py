@@ -1,10 +1,10 @@
 from io import BytesIO
 from typing import Optional
-import aiohttp
 import aioboto3
 from PIL import Image
 from ..storage_interface import StorageInterface
 from ...config import Config
+from ...s3_cache import S3Cache
 
 cfg = Config()
 
@@ -186,6 +186,7 @@ class S3AWSStorage(StorageInterface):
                 Key=image_key,
                 ExtraArgs={"ACL": cfg.s3_acl_type},
             )
+        await S3Cache().set(image_key)
 
     async def _delete_from_s3(self, image_key: str):
         """
@@ -194,6 +195,7 @@ class S3AWSStorage(StorageInterface):
         **Parameters:**
         - `image_key` (str): The S3 object key to delete.
         """
+        await S3Cache().delete(image_key)
         async with self.get_client() as s3:
             await s3.delete_object(Bucket=cfg.s3_bucket, Key=image_key)
 
@@ -205,6 +207,7 @@ class S3AWSStorage(StorageInterface):
         - `folder_prefix` (str): The S3 folder prefix.
         """
         async with self.get_client() as s3:
+            await S3Cache().delete_by_prefix(folder_prefix)
             response = await s3.list_objects_v2(Bucket=cfg.s3_bucket, Prefix=folder_prefix)
 
             if "Contents" in response:
@@ -221,9 +224,12 @@ class S3AWSStorage(StorageInterface):
         **Returns:**
         - `bool`: `True` if the object exists, otherwise `False`.
         """
+        if await S3Cache().exists(image_key):
+            return True
         try:
             async with self.get_client() as s3:
                 await s3.head_object(Bucket=cfg.s3_bucket, Key=image_key)
+            await S3Cache().set(image_key)
             return True
         except Exception as e:
             return False

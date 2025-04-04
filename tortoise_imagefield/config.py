@@ -2,6 +2,7 @@ import os
 from typing import Self, Optional
 from enum import Enum
 from dotenv import load_dotenv
+from aiocache import SimpleMemoryCache
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -66,5 +67,6 @@ class Config:
             cls._instance.s3_secret_key = os.getenv("S3_SECRET_KEY", None)
             cls._instance.s3_cdn_domain = os.getenv("S3_CDN_DOMAIN", None)
             cls._instance.s3_acl_type = os.getenv("S3_ACL_TYPE", S3AclType.PRIVATE.value)
+            cls._instance.s3_cache = SimpleMemoryCache
 
         return cls._instance  # Return singleton instance
