@@ -72,6 +72,8 @@ def _crop_image(img: Image.Image, width: int, height: int, position: str):
     **Returns:**
     - `Image.Image`: The cropped image or the original image if it's too small to crop.
     """
+    if not isinstance(position, CropPositions):
+        position = CropPositions(position)
     img_width, img_height = img.size
     if img_width < width or img_height < height:
         return img  # Return original if it's too small to crop
@@ -122,7 +124,8 @@ def _calculate_box(img: Image.Image, width: int, height: int, position: str) -> 
     **Returns:**
     - `tuple[float, float, float, float]`: A tuple `(left, top, right, bottom)` defining the cropping box.
     """
-
+    if not isinstance(position, CropPositions):
+        position = CropPositions(position)
     img_width, img_height = img.size
     aspect_ratio_img = img_width / img_height
     aspect_ratio_target = width / height
